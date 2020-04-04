@@ -58,8 +58,8 @@ def key_exchange(server):
 
 def main():
     server = select_first_server(get_server_list())
-    print(server)
-    key_exchange(server)
+    server_socket = key_exchange(server)
+    server_socket.close()
 
 
 if __name__ == '__main__':

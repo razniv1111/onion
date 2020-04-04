@@ -38,11 +38,30 @@ def find_in_connections(field, value):
     return [connection for connection in connections if connection[index] == value]
 
 
+def connection_closed(connection):
+    """ closes connection and removes from all lists """
+    global no_key_set, rlist, wlist, xlist
+    print(f'connection {connection.getpeername()} closed')
+
+    connection.close()
+    if connection in no_key_set:
+        no_key_set.remove(connection)
+    if connection in rlist:
+        rlist.remove(connection)
+    if connection in wlist:
+        wlist.remove(connection)
+    if connection in xlist:
+        xlist.remove(connection)
+
+
 def deal_with_massage(connection):
     # needs to establish key
     if connection in no_key_set:
         print('connect')
         data = connection.recv(BUFF_SIZE).decode()
+        if not data:
+            connection_closed(connection)
+            return
         print(data)
         lines = data.splitlines()
         if lines[0] != '1':
@@ -60,7 +79,11 @@ def deal_with_massage(connection):
         no_key_set.remove(connection)
         rlist.append(connection)
     else:
-        print(connection.getpeername(), 'data=', connection.recv(BUFF_SIZE).decode())
+        data = connection.recv(BUFF_SIZE).decode()
+        if data:
+            print(connection.getpeername(), 'data=', data)
+        else:
+            connection_closed(connection)
 
 
 def accept_connection(server_socket):
