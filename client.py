@@ -2,20 +2,25 @@ from socket import *
 import json
 import random
 
+
 def get_server_list():
     with open("server_list.json", "r") as f:
         data = json.load(f)
     return data
 
+
 def select_first_server(server_list):
-    return random.choice(list(server_list.keys()))
+    return random.choice([(ip, server_list[ip]) for ip in server_list])
+
 
 def key_generator():
     # will be changed to a proper encryption
-    return random.randrange(0,100000)
+    return random.randrange(0, 100000)
+
 
 def id_generator():
-    return random.randrange(0,1000)
+    return random.randrange(0, 1000)
+
 
 def create_connection(server):
     s = socket(AF_INET, SOCK_STREAM)
@@ -26,6 +31,7 @@ def create_connection(server):
         print("error connecting to server")
         return None
 
+
 def key_exchange(server):
     id = id_generator()
     key = key_generator()
@@ -34,7 +40,7 @@ def key_exchange(server):
         return
 
     try:
-        s.send("1\n" + id + "\n" + key)
+        s.send(f"1\n{id}\n{key}".encode())
     except OSError:
         print("connection error")
         s.close()
@@ -42,15 +48,19 @@ def key_exchange(server):
 
     try:
         s.settimeout(3)
-        s.recv(1024)
+        answer = s.recv(1024)
     except timeout:
         print("id not available")
         return
+    print(answer)
     return s
 
+
 def main():
-    servers = get_server_list()
-    print(select_first_server(servers))
+    server = select_first_server(get_server_list())
+    print(server)
+    key_exchange(server)
+
 
 if __name__ == '__main__':
     main()

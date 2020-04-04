@@ -49,17 +49,18 @@ def deal_with_massage(connection):
             print(f'error!, connected client {connection.getpeername()} tries to change key')
             return
         connection_id = lines[1]
-        connection_key = lines[3]
+        connection_key = lines[2]
         if find_in_connections('id', connection):
+            print('connection denied')
             connection.close()
             no_key_set.remove(connection)
             return
-        connection.send('OK')
+        connection.send('OK'.encode())
         connections.append(Connection(socket == connection, id=connection_id, key=connection_key))
         no_key_set.remove(connection)
         rlist.append(connection)
     else:
-        print('data=', connection.recv(BUFF_SIZE).decode())
+        print(connection.getpeername(), 'data=', connection.recv(BUFF_SIZE).decode())
 
 
 def accept_connection(server_socket):
@@ -76,7 +77,7 @@ def main_loop(server_socket):
 
     while True:
         print()
-        print(len(rlist + no_key_set), len(wlist), len(xlist))
+        print((len(rlist), len(no_key_set)), len(wlist), len(xlist))
         received, ready_to_write, excepted = select(rlist + no_key_set, wlist, xlist)
         print('new: ', len(received), len(ready_to_write), len(excepted))
 
