@@ -1,0 +1,4 @@
+keys: to share the key from client to server, secured communication (2nd stage)
+    send key, uid + ip
+
+data: dst - json (ip, port), src - json (ip, port), response (bool), data (encrypted)
