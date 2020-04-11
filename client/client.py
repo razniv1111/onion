@@ -30,20 +30,38 @@ def create_connection(server):
         return None
 
 
-def key_exchange(servers, dst):
-    server_socks = []
+def key_exchange_with_first_server(servers):
 
-    for i in range(len(servers)):
-        server = servers[i]
+    key = key_generator()
+    s = create_connection(servers[0])
+    if not s:
+        return
+
+    try:
+        s.send(f"1\n{key}\n{servers[1][0]},{servers[1][1]}".encode())
+    except OSError:
+        print("connection error")
+        s.close()
+        return
+
+    try:
+        s.settimeout(3)
+        answer = s.recv(1024)
+    except timeout:
+        print("id not available")
+        return
+    print(answer)
+    return s
+
+
+def setup_all_servers(s, servers, dst):
+    for i in range(1,len(servers)):
         key = key_generator()
-        s = create_connection(server)
-        if not s:
-            return
-
+        header = '2\n'*i
         try:
-            s.send(f"1\n{key}\n{servers[i+1][0]},{server[i+1][1]}".encode())
+            s.send(f"{header}1\n{key}\n{servers[i+1][0]},{servers[i+1][1]}").encode()
         except IndexError:
-            s.send(f"1\n{key}\n{dst[0]},{dst[1]}".encode())
+            s.send(f"{header}1\n{key}\n{dst[0]},{dst[1]}").encode()
         except OSError:
             print("connection error")
             s.close()
@@ -56,19 +74,13 @@ def key_exchange(servers, dst):
             print("id not available")
             return
         print(answer)
-        server_socks.append(s)
-    return server_socks
-
 
 def main():
-    dst = ("172.217.22.36", 80)
-    print(get_server_list())
-    print(select_random_servers(get_server_list()))
-    '''
-    server = select_first_server(get_server_list())
-    server_socket = key_exchange(server)
+
+    server = select_random_servers(get_server_list())
+    server_socket = key_exchange_with_first_server(server)
+    setup_all_servers(server_socket,server,["www.google.com",80])
     server_socket.close()
-    '''
 
 if __name__ == '__main__':
     main()
