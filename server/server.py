@@ -5,6 +5,7 @@ import socket
 from select import select
 import collections
 import time
+import sys
 
 Connection = collections.namedtuple('Connection', ['src', 'key', 'dst'])
 
@@ -48,7 +49,7 @@ def find_connection(sock):
     """
     for connection in connections:
         if sock in connection:
-            return sock
+            return connection
 
 
 def connection_closed(connection):
@@ -87,13 +88,14 @@ def establish_key(connection):
         connection_closed(connection)
         return
 
+    print(f'establishing key with {connection.getpeername()}', end='\n\n')
     lines = data.splitlines()
 
     if lines[0] != '1':
         print(f'error!, connection client {connection.getpeername()} doesnt use 1 flag')
         return
 
-    connection_id, connection_key, destination = lines[1], lines[2], lines[3]
+    connection_key, destination = lines[1], lines[2]
 
     dst_ip, dst_port = destination.split(',')
     dst_port = int(dst_port)
@@ -105,40 +107,45 @@ def establish_key(connection):
     connections.append(Connection(src=connection, key=connection_key, dst=dst_socket))
 
     no_key_set.remove(connection)
-    rlist.append(connection, dst_socket)
+    rlist.extend([connection, dst_socket])
     wlist.append(dst_socket)
     xlist.append(dst_socket)
 
 
 def send_forward(data, dst):
     """removes encryption and sends forward"""""
-    dst.send(data)
+    print(data, end='\n\n')
+    dst.send(data.encode())
 
 
 def send_backward(data, src):
-    src.send()
+    print(data, end='\n\n')
+    src.send(data.encode())
 
 
 def forward_data(connection):
     data = connection.recv(BUFF_SIZE).decode()
+
     if not data:
         connection_closed(connection)
         return
+    print(f'forwarding from {connection.getpeername()}', end='')
 
     connection_data = find_connection(connection)
     if not connection_data:
         print(f'error, {connection.getpeername()} not found')
         return
 
-    if connection_data.src == socket:
+    if connection_data.src == connection:
         if data[:2] != '2\n':
             print(f'error, {connection.getpeername()} tries to establish key')
             return
-
-        send_forward(data[3:], connection_data.dst)
+        print(f' sent to {connection_data.dst.getpeername()}')
+        send_forward(data[2:], connection_data.dst)
     else:
+        print(connection_data.src)
+        print('sent to', connection_data.src.getpeername())
         send_backward(data, connection_data.src)
-    print(connection.getpeername(), 'data=', data)
 
 
 def deal_with_message(connection):
@@ -146,6 +153,7 @@ def deal_with_message(connection):
     receves massage and does the needed action
     :param connection: the socket to deal with
     """
+
     if connection in no_key_set:
         establish_key(connection)
     else:
@@ -158,7 +166,7 @@ def accept_connection(server_socket):
     """
     global no_key_set, wlist, xlist
     client_socket, client_address = server_socket.accept()
-    print(f'new client from {client_address}')
+    print(f'new client from {client_address}', end='\n\n')
     no_key_set.append(client_socket)
     wlist.append(client_socket)
     xlist.append(client_socket)
@@ -170,10 +178,7 @@ def main_loop(server_socket):
     rlist.append(server_socket)
 
     while True:
-        print()
-        print((len(rlist), len(no_key_set)), len(wlist), len(xlist))
         received, ready_to_write, excepted = select(rlist + no_key_set, wlist, xlist)
-        print('new: ', len(received), len(ready_to_write), len(excepted))
 
         for connection in received:
             if server_socket == connection:
@@ -181,11 +186,15 @@ def main_loop(server_socket):
                 continue
 
             deal_with_message(connection)
-        time.sleep(5)
+        # time.sleep(5)
 
 
 def main():
-    server_socket = create_server_socket(port=1234)
+    if len(sys.argv) < 2:
+        port = 1230
+    else:
+        port = int(sys.argv[1])
+    server_socket = create_server_socket(port=port)
     main_loop(server_socket)
     server_socket.close()
 
