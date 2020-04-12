@@ -90,16 +90,11 @@ def establish_key(connection):
     lines = data.splitlines()
 
     if lines[0] != '1':
-        print(f'error!, connected client {connection.getpeername()} tries to change key')
+        print(f'error!, connection client {connection.getpeername()} doesnt use 1 flag')
         return
 
     connection_id, connection_key, destination = lines[1], lines[2], lines[3]
 
-    if find_in_connections('id', connection):
-        print('connection denied')
-        connection.close()
-        no_key_set.remove(connection)
-        return
     dst_ip, dst_port = destination.split(',')
     dst_port = int(dst_port)
     connection.send('OK'.encode())
@@ -146,7 +141,7 @@ def forward_data(connection):
     print(connection.getpeername(), 'data=', data)
 
 
-def deal_with_massage(connection):
+def deal_with_message(connection):
     """
     receves massage and does the needed action
     :param connection: the socket to deal with
@@ -185,8 +180,8 @@ def main_loop(server_socket):
                 accept_connection(connection)
                 continue
 
-            deal_with_massage(connection)
-        time.sleep(1)
+            deal_with_message(connection)
+        time.sleep(5)
 
 
 def main():
